@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/sashabaranov/go-openai"
+	openai "github.com/sashabaranov/go-openai"
 )
 
 // Client wraps the OpenAI client
@@ -59,14 +59,14 @@ func (c *Client) GenerateCommitMessage(systemPrompt, diff string) (string, error
 }
 
 // GenerateCommitMessageWithContext generates a commit message with additional context
-func (c *Client) GenerateCommitMessageWithContext(systemPrompt, diff, context string) (string, error) {
+func (c *Client) GenerateCommitMessageWithContext(systemPrompt, diff, additionalContext string) (string, error) {
 	if diff == "" {
 		return "", fmt.Errorf("empty diff provided")
 	}
 
 	userMessage := diff
-	if context != "" {
-		userMessage = fmt.Sprintf("Context: %s\n\nDiff:\n%s", context, diff)
+	if additionalContext != "" {
+		userMessage = fmt.Sprintf("Context: %s\n\nDiff:\n%s", additionalContext, diff)
 	}
 
 	resp, err := c.client.CreateChatCompletion(
