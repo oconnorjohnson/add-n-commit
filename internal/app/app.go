@@ -517,7 +517,7 @@ func (m *Model) loadFiles() tea.Msg {
 	}
 	
 	// Filter out already staged files if not auto-staging all
-	if !m.config.AutoStageAll {
+	if m.config != nil && !m.config.AutoStageAll {
 		var unstaged []git.File
 		for _, f := range files {
 			if !f.IsStaged {
@@ -532,6 +532,10 @@ func (m *Model) loadFiles() tea.Msg {
 
 func (m *Model) generateCommitMessage() tea.Cmd {
 	return func() tea.Msg {
+		if m.openaiClient == nil {
+			return errorMsg{err: fmt.Errorf("OpenAI client not initialized. Please set your API key.")}
+		}
+		
 		var message string
 		var err error
 		
