@@ -165,22 +165,35 @@ func (d fileDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		return
 	}
 
-	str := fmt.Sprintf("%s %s", i.File.Status, i.File.Path)
-
-	fn := NormalStyle.Render
-	if index == m.Index() {
-		fn = func(s ...string) string {
-			return SelectedStyle.Render("> " + strings.Join(s, " "))
-		}
-	}
-
+	checkbox := "[ ]"
 	if i.Selected {
-		str = "[✓] " + str
-	} else {
-		str = "[ ] " + str
+		checkbox = "[✓]"
 	}
+	
+	statusColor := StatusStyle
+	switch i.File.Status {
+	case "M":
+		statusColor = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#FF9500", Dark: "#FFCC00"})
+	case "A":
+		statusColor = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"})
+	case "D":
+		statusColor = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#FF4672", Dark: "#ED567A"})
+	case "??":
+		statusColor = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"})
+	}
+	
+	status := statusColor.Render(i.File.Status)
+	path := i.File.Path
 
-	fmt.Fprint(w, fn(str))
+	if index == m.Index() {
+		// Selected item
+		checkbox = SelectedStyle.Render(checkbox)
+		path = SelectedStyle.Render(path)
+		fmt.Fprintf(w, "%s %s %s %s", SelectedStyle.Render(">"), checkbox, status, path)
+	} else {
+		// Normal item
+		fmt.Fprintf(w, "  %s %s %s", NormalStyle.Render(checkbox), status, NormalStyle.Render(path))
+	}
 }
 
 // ModeItem represents a commit mode in the list
@@ -210,12 +223,11 @@ func (d modeDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		return
 	}
 
-	fn := NormalStyle.Render
 	if index == m.Index() {
-		fn = func(s ...string) string {
-			return SelectedStyle.Render("> " + strings.Join(s, " "))
-		}
+		// Selected item
+		fmt.Fprintf(w, "%s %s", SelectedStyle.Render(">"), SelectedStyle.Render(i.Name))
+	} else {
+		// Normal item
+		fmt.Fprintf(w, "  %s", NormalStyle.Render(i.Name))
 	}
-
-	fmt.Fprint(w, fn(i.Name))
 } 

@@ -70,6 +70,8 @@ func New(cfg *config.Config) *Model {
 		config:   cfg,
 		spinner:  spinner.New(),
 		textarea: textarea.New(),
+		width:    80,  // Default width
+		height:   24,  // Default height
 	}
 	
 	// Initialize text input for custom prompt
@@ -88,6 +90,17 @@ func New(cfg *config.Config) *Model {
 	// Set up spinner
 	m.spinner.Spinner = spinner.Dot
 	
+	// Initialize empty lists to prevent nil pointer
+	delegate := ui.NewFileDelegate()
+	m.fileList = list.New([]list.Item{}, delegate, 76, 14)
+	m.fileList.SetShowStatusBar(false)
+	m.fileList.SetFilteringEnabled(false)
+	
+	modeDelegate := ui.NewModeDelegate()
+	m.modeList = list.New([]list.Item{}, modeDelegate, 76, 10)
+	m.modeList.SetShowStatusBar(false)
+	m.modeList.SetFilteringEnabled(false)
+	
 	// Initialize OpenAI client if API key is available
 	if cfg.OpenAIKey != "" {
 		m.openaiClient = openai.NewClient(cfg.OpenAIKey, cfg.Model, cfg.Temperature)
@@ -104,10 +117,8 @@ func (m *Model) Init() tea.Cmd {
 		return textinput.Blink
 	}
 	
-	return tea.Batch(
-		m.loadFiles,
-		m.spinner.Tick,
-	)
+	// Start with loading files
+	return m.loadFiles
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -140,7 +151,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		
 	case filesLoadedMsg:
 		m.files = msg.files
-		m.setupFileList()
+		if len(m.files) > 0 {
+			m.setupFileList()
+		}
 		return m, nil
 		
 	case commitModeSelectedMsg:
@@ -174,9 +187,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch m.state {
 	case stateFileSelection:
-		m.fileList, cmd = m.fileList.Update(msg)
+		if m.fileList.Items() != nil {
+			m.fileList, cmd = m.fileList.Update(msg)
+		}
 	case stateModeSelection:
-		m.modeList, cmd = m.modeList.Update(msg)
+		if m.modeList.Items() != nil {
+			m.modeList, cmd = m.modeList.Update(msg)
+		}
 	case stateGenerating:
 		m.spinner, cmd = m.spinner.Update(msg)
 	case stateEditing:
@@ -236,9 +253,12 @@ func (m *Model) viewFileSelection() string {
 		return ui.Title("No changes detected") + "\n\n" + ui.Subtle("Make some changes and run again!")
 	}
 	
+	// Debug: show file count
+	title := fmt.Sprintf("Select files to stage (%d files)", len(m.files))
+	
 	return fmt.Sprintf(
 		"%s\n\n%s\n\n%s",
-		ui.Title("Select files to stage"),
+		ui.Title(title),
 		m.fileList.View(),
 		ui.Subtle("Space: toggle, a: all/none, Enter: continue, q: quit"),
 	)
@@ -324,11 +344,21 @@ func (m *Model) setupFileList() {
 	}
 	
 	delegate := ui.NewFileDelegate()
-	m.fileList = list.New(items, delegate, m.width-4, m.height-10)
+	width := m.width - 4
+	if width < 40 {
+		width = 40
+	}
+	height := m.height - 10
+	if height < 10 {
+		height = 10
+	}
+	m.fileList = list.New(items, delegate, width, height)
 	m.fileList.Title = "Files"
 	m.fileList.SetShowStatusBar(false)
 	m.fileList.SetFilteringEnabled(false)
 	m.fileList.Styles.Title = ui.TitleStyle
+	m.fileList.Styles.PaginationStyle = ui.SubtleStyle
+	m.fileList.Styles.HelpStyle = ui.SubtleStyle
 }
 
 func (m *Model) setupModeList() {
@@ -339,11 +369,17 @@ func (m *Model) setupModeList() {
 	}
 	
 	delegate := ui.NewModeDelegate()
-	m.modeList = list.New(items, delegate, m.width-4, 10)
+	width := m.width - 4
+	if width < 40 {
+		width = 40
+	}
+	m.modeList = list.New(items, delegate, width, 10)
 	m.modeList.Title = "Modes"
 	m.modeList.SetShowStatusBar(false)
 	m.modeList.SetFilteringEnabled(false)
 	m.modeList.Styles.Title = ui.TitleStyle
+	m.modeList.Styles.PaginationStyle = ui.SubtleStyle
+	m.modeList.Styles.HelpStyle = ui.SubtleStyle
 }
 
 // Update helpers
@@ -516,16 +552,8 @@ func (m *Model) loadFiles() tea.Msg {
 		return errorMsg{err: err}
 	}
 	
-	// Filter out already staged files if not auto-staging all
-	if m.config != nil && !m.config.AutoStageAll {
-		var unstaged []git.File
-		for _, f := range files {
-			if !f.IsStaged {
-				unstaged = append(unstaged, f)
-			}
-		}
-		files = unstaged
-	}
+	// Don't filter files - show all changed files
+	// Users can select which ones to stage
 	
 	return filesLoadedMsg{files: files}
 }

@@ -45,7 +45,7 @@ func GetStatus() ([]File, error) {
 		file := File{
 			Path:      filename,
 			IsStaged:  stagedStatus != ' ' && stagedStatus != '?',
-			IsTracked: unstagedStatus != '?',
+			IsTracked: stagedStatus != '?' || unstagedStatus != '?',
 		}
 		
 		// Determine status
