@@ -18,6 +18,7 @@ func main() {
 		setKey    = flag.String("set-key", "", "Set the OpenAI API key")
 		showKey   = flag.Bool("show-key", false, "Show the current OpenAI API key")
 		deleteKey = flag.Bool("delete-key", false, "Delete the stored OpenAI API key")
+		configure = flag.Bool("config", false, "Open configuration editor")
 		showHelp  = flag.Bool("help", false, "Show help")
 		version   = flag.Bool("version", false, "Show version")
 	)
@@ -64,6 +65,18 @@ func main() {
 		return
 	}
 
+	if *configure {
+		// Run configuration editor
+		p := tea.NewProgram(
+			config.NewConfigEditor(cfg),
+			tea.WithAltScreen(),
+		)
+		if _, err := p.Run(); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+
 	// Check if we're in a git repository
 	if err := checkGitRepo(); err != nil {
 		log.Fatal("Error: Not in a git repository")
@@ -99,6 +112,7 @@ OPTIONS:
     --set-key <key>    Set the OpenAI API key
     --show-key         Show the current OpenAI API key (masked)
     --delete-key       Delete the stored OpenAI API key
+    --config           Open interactive configuration editor
     --version          Show version information
     --help             Show this help message
 
@@ -117,7 +131,8 @@ EXAMPLES:
     anc                          # Enter interactive mode
     anc --set-key sk-...        # Set your OpenAI API key
     anc --show-key              # View your current API key (masked)
-    anc --delete-key            # Remove stored API key`)
+    anc --delete-key            # Remove stored API key
+    anc --config                # Open configuration editor`)
 }
 
 func handleSetKey(cfg *config.Config, key string) error {
