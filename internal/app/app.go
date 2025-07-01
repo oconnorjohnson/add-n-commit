@@ -164,7 +164,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, textinput.Blink
 		}
 		m.state = stateGenerating
-		return m, m.generateCommitMessage()
+		return m, tea.Batch(
+			m.spinner.Tick,
+			m.generateCommitMessage(),
+		)
 		
 	case commitMessageGeneratedMsg:
 		m.generatedMsg = msg.message
@@ -274,10 +277,20 @@ func (m *Model) viewModeSelection() string {
 }
 
 func (m *Model) viewGenerating() string {
+	// Create a preview area with spinner
+	previewBox := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("62")).
+		Padding(1, 2).
+		Width(60).
+		Height(10).
+		Render(fmt.Sprintf("%s Generating commit message...", m.spinner.View()))
+	
 	return fmt.Sprintf(
-		"%s %s",
-		m.spinner.View(),
-		ui.Title("Generating commit message..."),
+		"%s\n\n%s\n\n%s",
+		ui.Title("Generating Commit Message"),
+		previewBox,
+		ui.Subtle("Please wait..."),
 	)
 }
 
@@ -414,6 +427,8 @@ func (m *Model) updateConfig(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) updateFileSelection(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	
 	switch msg.String() {
 	case "q":
 		return m, tea.Quit
@@ -473,10 +488,14 @@ func (m *Model) updateFileSelection(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	
-	return m, nil
+	// Always update the list to handle navigation
+	m.fileList, cmd = m.fileList.Update(msg)
+	return m, cmd
 }
 
 func (m *Model) updateModeSelection(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	
 	switch msg.String() {
 	case "q":
 		return m, tea.Quit
@@ -489,7 +508,9 @@ func (m *Model) updateModeSelection(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	
-	return m, nil
+	// Always update the list to handle navigation
+	m.modeList, cmd = m.modeList.Update(msg)
+	return m, cmd
 }
 
 func (m *Model) updateReviewing(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -569,9 +590,9 @@ func (m *Model) generateCommitMessage() tea.Cmd {
 		
 		switch m.selectedMode {
 		case modeAllInOne:
-			diff, err := git.GetStagedDiff()
-			if err != nil {
-				return errorMsg{err: err}
+			diff, diffErr := git.GetStagedDiff()
+			if diffErr != nil {
+				return errorMsg{err: diffErr}
 			}
 			
 			message, err = m.openaiClient.GenerateCommitMessage(
@@ -580,23 +601,23 @@ func (m *Model) generateCommitMessage() tea.Cmd {
 			)
 			
 		case modeByFile:
-			files, err := git.GetStagedFiles()
-			if err != nil {
-				return errorMsg{err: err}
+			files, filesErr := git.GetStagedFiles()
+			if filesErr != nil {
+				return errorMsg{err: filesErr}
 			}
 			
 			var messages []string
 			for _, file := range files {
-				diff, err := git.GetStagedDiffForFile(file)
-				if err != nil {
+				diff, diffErr := git.GetStagedDiffForFile(file)
+				if diffErr != nil {
 					continue
 				}
 				
-				msg, err := m.openaiClient.GenerateCommitMessage(
+				msg, msgErr := m.openaiClient.GenerateCommitMessage(
 					m.config.SystemPromptFile,
 					diff,
 				)
-				if err != nil {
+				if msgErr != nil {
 					continue
 				}
 				
@@ -606,9 +627,9 @@ func (m *Model) generateCommitMessage() tea.Cmd {
 			message = strings.Join(messages, "\n")
 			
 		case modeCustomPrompt:
-			diff, err := git.GetStagedDiff()
-			if err != nil {
-				return errorMsg{err: err}
+			diff, diffErr := git.GetStagedDiff()
+			if diffErr != nil {
+				return errorMsg{err: diffErr}
 			}
 			
 			message, err = m.openaiClient.GenerateCommitMessageWithContext(

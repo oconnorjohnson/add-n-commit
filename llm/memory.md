@@ -138,3 +138,42 @@ export OPENAI_API_KEY=sk-test-key
 - Add more models (GPT-4, Claude, etc.)
 - Batch processing for multiple repositories
 - Export/import configuration
+
+## 2025-07-01 13:05:44 PDT - Debugging Empty File List Issue
+
+**Issue**: User reported not seeing any files, modes, or commit messages in the app.
+
+**Investigation**:
+
+1. Examined the app.go file to understand the UI flow
+2. Checked git.go to verify the GetStatus implementation
+3. Ran git status commands to check repository state
+
+**Root Cause**: The repository has no uncommitted changes. The git status showed:
+
+- Working tree is clean
+- No staged files
+- No modified files
+- No untracked files
+
+**Resolution**: The app is functioning correctly. It shows "No changes detected" when there are no files to commit. The files that were shown as staged in the initial git status snapshot were already committed before the user ran the app.
+
+**Key Learning**: The app properly handles the empty state by showing an appropriate message to the user.
+
+## 2025-07-01 13:11:07 PDT - Fixed UI List Rendering and Navigation Issues
+
+**Issues Fixed**:
+
+1. **File list not displaying**: The `NewFileDelegate()` and `NewModeDelegate()` functions were returning `list.DefaultDelegate` instead of the custom delegates with proper render methods.
+
+   - Fixed by changing return type to `list.ItemDelegate` and returning the custom delegate instances
+
+2. **Keyboard navigation not working**: The `updateFileSelection` and `updateModeSelection` methods were not passing through keyboard events to the list components.
+   - Fixed by always calling the list's Update method at the end of these functions to handle navigation keys (arrows, j/k)
+
+**Code Changes**:
+
+- Modified `internal/ui/styles.go`: Changed delegate factory functions to return custom delegates
+- Modified `internal/app/app.go`: Added list update calls to handle navigation in file and mode selection
+
+**Result**: The app now properly displays files and allows navigation using arrow keys or j/k vim keys.

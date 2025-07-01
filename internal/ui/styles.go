@@ -149,10 +149,8 @@ func (i FileItem) FilterValue() string { return i.File.Path }
 // FileDelegate handles rendering of file items
 type fileDelegate struct{}
 
-func NewFileDelegate() list.DefaultDelegate {
-	d := list.NewDefaultDelegate()
-	d.ShowDescription = false
-	return d
+func NewFileDelegate() list.ItemDelegate {
+	return &fileDelegate{}
 }
 
 func (d fileDelegate) Height() int                             { return 1 }
@@ -207,10 +205,8 @@ func (i ModeItem) FilterValue() string { return i.Name }
 // ModeDelegate handles rendering of mode items
 type modeDelegate struct{}
 
-func NewModeDelegate() list.DefaultDelegate {
-	d := list.NewDefaultDelegate()
-	d.ShowDescription = false
-	return d
+func NewModeDelegate() list.ItemDelegate {
+	return &modeDelegate{}
 }
 
 func (d modeDelegate) Height() int                             { return 1 }
