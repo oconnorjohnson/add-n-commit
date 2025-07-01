@@ -1,9 +1,0 @@
-This is a test file to verify that the add-n-commit app
-is properly detecting and displaying changed files.
-
-Created on: 2025-07-01 13:05:44 PDT
-
-This file will be used to test:
-1. File detection in the app
-2. Mode selection
-3. Commit message generation 

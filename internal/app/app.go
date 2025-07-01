@@ -528,7 +528,10 @@ func (m *Model) updateReviewing(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		
 	case "r":
 		m.state = stateGenerating
-		return m, m.generateCommitMessage()
+		return m, tea.Batch(
+			m.spinner.Tick,
+			m.generateCommitMessage(),
+		)
 	}
 	
 	return m, nil
@@ -540,7 +543,10 @@ func (m *Model) updateEditing(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			m.customPrompt = m.textinput.Value()
 			m.state = stateGenerating
-			return m, m.generateCommitMessage()
+			return m, tea.Batch(
+				m.spinner.Tick,
+				m.generateCommitMessage(),
+			)
 			
 		case tea.KeyEsc:
 			m.state = stateModeSelection

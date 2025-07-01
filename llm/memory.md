@@ -177,3 +177,27 @@ export OPENAI_API_KEY=sk-test-key
 - Modified `internal/app/app.go`: Added list update calls to handle navigation in file and mode selection
 
 **Result**: The app now properly displays files and allows navigation using arrow keys or j/k vim keys.
+
+## 2025-07-01 13:14:27 PDT - Fixed Commit Message Generation
+
+**Issues Fixed**:
+
+1. **Commit message generation not working**: The app was immediately showing empty commit message without calling OpenAI API.
+
+   - Fixed variable shadowing in `generateCommitMessage` function where `err` was being redeclared in nested scopes
+   - Added proper error handling with unique variable names (diffErr, filesErr, msgErr)
+
+2. **No loading spinner during generation**: Added proper spinner initialization and tick commands.
+   - Modified all paths to generating state to use `tea.Batch` with `m.spinner.Tick`
+   - Improved the generating view with a bordered preview box showing the spinner
+
+**Code Changes**:
+
+- Modified `internal/app/app.go`:
+  - Fixed commitModeSelectedMsg handler to start spinner tick
+  - Fixed updateReviewing "r" handler to start spinner tick
+  - Fixed updateEditing custom prompt handler to start spinner tick
+  - Improved viewGenerating with a styled preview box
+  - Fixed variable shadowing in generateCommitMessage function
+
+**Result**: The app now properly shows a loading spinner during API calls and correctly generates commit messages using the OpenAI API.
