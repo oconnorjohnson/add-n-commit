@@ -12,6 +12,13 @@ import (
 	"github.com/oconnorjohnson/add-n-commit/internal/config"
 )
 
+// Build variables set by goreleaser
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
 	// Define command-line flags
 	var (
@@ -20,14 +27,16 @@ func main() {
 		deleteKey = flag.Bool("delete-key", false, "Delete the stored OpenAI API key")
 		configure = flag.Bool("config", false, "Open configuration editor")
 		showHelp  = flag.Bool("help", false, "Show help")
-		version   = flag.Bool("version", false, "Show version")
+		versionFlag = flag.Bool("version", false, "Show version")
 	)
 
 	flag.Parse()
 
 	// Handle version
-	if *version {
-		fmt.Println("anc (add-n-commit) v1.0.0")
+	if *versionFlag {
+		fmt.Printf("anc (add-n-commit) %s\n", version)
+		fmt.Printf("commit: %s\n", commit)
+		fmt.Printf("built at: %s\n", date)
 		fmt.Println("AI-powered git commit message generator")
 		return
 	}

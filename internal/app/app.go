@@ -29,6 +29,7 @@ const (
 	stateSuccess
 	stateError
 	stateConfig
+	stateStagedFilesPrompt
 )
 
 type commitMode int
@@ -61,6 +62,9 @@ type Model struct {
 	height int
 	
 	openaiClient *openai.Client
+	
+	// New field to track already staged files
+	alreadyStagedFiles []string
 }
 
 // New creates a new app model
@@ -118,7 +122,10 @@ func (m *Model) Init() tea.Cmd {
 	}
 	
 	// Start with loading files
-	return m.loadFiles
+	return tea.Batch(
+		m.loadFiles,
+		m.checkStagedFiles,
+	)
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -131,6 +138,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		// Handle Ctrl+C globally
 		if key.Matches(msg, key.NewBinding(key.WithKeys("ctrl+c"))) {
+			// Cleanup before quitting
+			m.cleanup()
 			return m, tea.Quit
 		}
 		
@@ -145,6 +154,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateReviewing(msg)
 		case stateEditing:
 			return m.updateEditing(msg)
+		case stateStagedFilesPrompt:
+			return m.updateStagedFilesPrompt(msg)
 		case stateSuccess, stateError:
 			return m, tea.Quit
 		}
@@ -153,6 +164,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.files = msg.files
 		if len(m.files) > 0 {
 			m.setupFileList()
+		}
+		return m, nil
+		
+	case stagedFilesFoundMsg:
+		if len(msg.files) > 0 {
+			m.alreadyStagedFiles = msg.files
+			m.state = stateStagedFilesPrompt
 		}
 		return m, nil
 		
@@ -232,6 +250,8 @@ func (m *Model) View() string {
 		content = m.viewReviewing()
 	case stateEditing:
 		content = m.viewEditing()
+	case stateStagedFilesPrompt:
+		content = m.viewStagedFilesPrompt()
 	case stateSuccess:
 		content = m.viewSuccess()
 	case stateError:
@@ -318,6 +338,18 @@ func (m *Model) viewEditing() string {
 		ui.Title("Edit commit message"),
 		m.textarea.View(),
 		ui.Subtle("Ctrl+Enter: commit, Esc: cancel"),
+	)
+}
+
+func (m *Model) viewStagedFilesPrompt() string {
+	fileList := strings.Join(m.alreadyStagedFiles, "\n  - ")
+	
+	return fmt.Sprintf(
+		"%s\n\n%s\n\n%s\n\n%s",
+		ui.Title("Already Staged Files Detected"),
+		fmt.Sprintf("The following files are already staged:\n  - %s", fileList),
+		"What would you like to do?",
+		ui.Subtle("c: continue with staged files, u: unstage and start fresh, q: quit"),
 	)
 }
 
@@ -431,6 +463,7 @@ func (m *Model) updateFileSelection(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	
 	switch msg.String() {
 	case "q":
+		m.cleanup()
 		return m, tea.Quit
 		
 	case " ":
@@ -498,6 +531,7 @@ func (m *Model) updateModeSelection(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	
 	switch msg.String() {
 	case "q":
+		m.cleanup()
 		return m, tea.Quit
 		
 	case "enter":
@@ -516,6 +550,7 @@ func (m *Model) updateModeSelection(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *Model) updateReviewing(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q":
+		m.cleanup()
 		return m, tea.Quit
 		
 	case "enter":
@@ -572,6 +607,33 @@ func (m *Model) updateEditing(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *Model) updateStagedFilesPrompt(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "c":
+		// Continue with already staged files - go straight to mode selection
+		m.selectedFiles = m.alreadyStagedFiles
+		m.setupModeList()
+		m.state = stateModeSelection
+		return m, nil
+		
+	case "u":
+		// Unstage all files and start fresh
+		if err := git.UnstageFiles(m.alreadyStagedFiles); err != nil {
+			m.errorMsg = fmt.Sprintf("Failed to unstage files: %v", err)
+			m.state = stateError
+			return m, nil
+		}
+		m.alreadyStagedFiles = nil
+		m.state = stateFileSelection
+		return m, m.loadFiles
+		
+	case "q":
+		return m, tea.Quit
+	}
+	
+	return m, nil
+}
+
 // Commands
 func (m *Model) loadFiles() tea.Msg {
 	files, err := git.GetStatus()
@@ -583,6 +645,19 @@ func (m *Model) loadFiles() tea.Msg {
 	// Users can select which ones to stage
 	
 	return filesLoadedMsg{files: files}
+}
+
+func (m *Model) checkStagedFiles() tea.Msg {
+	files, err := git.GetStagedFiles()
+	if err != nil {
+		return nil
+	}
+	
+	if len(files) > 0 {
+		return stagedFilesFoundMsg{files: files}
+	}
+	
+	return nil
 }
 
 func (m *Model) generateCommitMessage() tea.Cmd {
@@ -668,6 +743,15 @@ func (m *Model) commitChanges() tea.Cmd {
 	}
 }
 
+// Add cleanup command
+func (m *Model) cleanup() tea.Msg {
+	// Only unstage files if we staged them in this session and didn't commit
+	if len(m.selectedFiles) > 0 && m.state != stateSuccess {
+		git.UnstageFiles(m.selectedFiles)
+	}
+	return nil
+}
+
 // Message types
 type filesLoadedMsg struct {
 	files []git.File
@@ -685,4 +769,8 @@ type commitSuccessMsg struct{}
 
 type errorMsg struct {
 	err error
+}
+
+type stagedFilesFoundMsg struct {
+	files []string
 } 

@@ -201,3 +201,27 @@ export OPENAI_API_KEY=sk-test-key
   - Fixed variable shadowing in generateCommitMessage function
 
 **Result**: The app now properly shows a loading spinner during API calls and correctly generates commit messages using the OpenAI API.
+
+## 2025-07-01 13:23:33 PDT - Handled Staged Files Edge Case
+
+**Issue**: When users stage files and quit the app before committing, those files remain staged in Git. On next run, this creates confusion.
+
+**Solution Implemented**:
+
+1. **Detection**: On startup, check for already-staged files using `git diff --cached --name-only`
+2. **User Prompt**: If staged files exist, show a prompt with options:
+   - `c`: Continue with the already staged files
+   - `u`: Unstage all and start fresh
+   - `q`: Quit
+3. **Visual Indicator**: Files already staged show "(staged)" next to their name in the file list
+4. **Cleanup on Quit**: When user quits (via 'q' or Ctrl+C), unstage any files that were staged in this session but not committed
+
+**Implementation Details**:
+
+- Added `stateStagedFilesPrompt` state to handle the prompt
+- Added `alreadyStagedFiles` field to track previously staged files
+- Added `cleanup()` function that unstages files on early exit
+- Modified all quit handlers to call cleanup
+- Updated file list rendering to show staged status
+
+**Result**: The app now gracefully handles the edge case of previously staged files, giving users clear options and preventing confusion about git state.

@@ -168,6 +168,12 @@ func (d fileDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		checkbox = "[✓]"
 	}
 	
+	// Add indicator if file is already staged
+	stagedIndicator := ""
+	if i.File.IsStaged {
+		stagedIndicator = " (staged)"
+	}
+	
 	statusColor := StatusStyle
 	switch i.File.Status {
 	case "M":
@@ -181,7 +187,7 @@ func (d fileDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	}
 	
 	status := statusColor.Render(i.File.Status)
-	path := i.File.Path
+	path := i.File.Path + stagedIndicator
 
 	if index == m.Index() {
 		// Selected item

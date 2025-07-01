@@ -19,6 +19,23 @@ A beautiful, interactive CLI tool for generating AI-powered git commit messages 
 
 ## Installation
 
+### Using Go Install (Recommended)
+
+```bash
+go install github.com/oconnorjohnson/add-n-commit@latest
+```
+
+### Using Homebrew (coming soon)
+
+```bash
+brew tap oconnorjohnson/tap
+brew install add-n-commit
+```
+
+### Download Binary
+
+Download the latest binary for your platform from [releases](https://github.com/oconnorjohnson/add-n-commit/releases).
+
 ### From Source
 
 ```bash
@@ -30,9 +47,9 @@ sudo mv anc /usr/local/bin/  # Or add to your PATH
 
 ### Prerequisites
 
-- Go 1.24.4 or higher
 - Git
 - OpenAI API key
+- Go 1.21+ (only for building from source)
 
 ## Quick Start
 
