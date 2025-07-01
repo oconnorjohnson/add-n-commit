@@ -118,6 +118,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 		
 	case tea.KeyMsg:
+		// Handle Ctrl+C globally
+		if key.Matches(msg, key.NewBinding(key.WithKeys("ctrl+c"))) {
+			return m, tea.Quit
+		}
+		
 		switch m.state {
 		case stateConfig:
 			return m.updateConfig(msg)
@@ -130,9 +135,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case stateEditing:
 			return m.updateEditing(msg)
 		case stateSuccess, stateError:
-			if key.Matches(msg, ui.Keys.Quit) {
-				return m, tea.Quit
-			}
+			return m, tea.Quit
 		}
 		
 	case filesLoadedMsg:

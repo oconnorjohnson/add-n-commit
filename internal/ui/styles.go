@@ -16,28 +16,28 @@ import (
 var (
 	TitleStyle = lipgloss.NewStyle().
 		Bold(true).
-		Foreground(lipgloss.Color("205")).
+		Foreground(lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}).
 		MarginBottom(1)
 
 	SubtleStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("241"))
+		Foreground(lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"})
 
 	SelectedStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("170")).
+		Foreground(lipgloss.AdaptiveColor{Light: "#EE6FF8", Dark: "#EE6FF8"}).
 		Bold(true)
 
 	NormalStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("252"))
+		Foreground(lipgloss.AdaptiveColor{Light: "#1A1A1A", Dark: "#DDDDDD"})
 
 	StatusStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("86"))
+		Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"})
 
 	ErrorStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("196")).
+		Foreground(lipgloss.AdaptiveColor{Light: "#FF4672", Dark: "#ED567A"}).
 		Bold(true)
 
 	SuccessStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("42")).
+		Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"}).
 		Bold(true)
 )
 
